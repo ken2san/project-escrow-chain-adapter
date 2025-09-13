@@ -49,4 +49,20 @@ describe("Escrow", function () {
     const txn = await escrow.transactions(0);
     expect(txn.state).to.equal(3); // Refunded
   });
+
+  it("should award and transfer points between accounts", async function () {
+    const [alice, bob] = await ethers.getSigners();
+    const Escrow = await ethers.getContractFactory("Escrow");
+    const escrow = await Escrow.deploy();
+    await escrow.deployed();
+
+    // award points to Alice
+    await escrow.connect(alice).awardPoints(alice.address, 100);
+    expect((await escrow.points(alice.address)).toNumber()).to.equal(100);
+
+    // transfer 30 points to Bob
+    await escrow.connect(alice).transferPoints(bob.address, 30);
+    expect((await escrow.points(alice.address)).toNumber()).to.equal(70);
+    expect((await escrow.points(bob.address)).toNumber()).to.equal(30);
+  });
 });

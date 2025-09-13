@@ -8,16 +8,22 @@
   "license": "ISC",
   "type": "module",
   "devDependencies": {
-  "hardhat": "^3.0.4",
-  "@nomicfoundation/hardhat-ethers": "^4.0.0",
+    "@nomicfoundation/hardhat-ethers": "^4.0.1",
+    "@nomicfoundation/hardhat-mocha": "^3.0.2",
+    "@types/node": "^24.3.1",
+    "chai": "^4.4.1",
     "ethers": "^6.15.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.2",
-    "viem": "^2.37.4",
-    "tsx": "^3.13.0",
-    "@types/node": "^24.3.1"
+    "hardhat": "^3.0.5",
+    "mocha": "^10.2.0"
   },
   "scripts": {
     "test": "hardhat test"
+  },
+  "mocha": {
+    "spec": "test/**/*.test.js",
+    "extension": [
+      "js",
+      "cjs"
+    ]
   }
 }

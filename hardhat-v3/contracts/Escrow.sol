@@ -49,4 +49,24 @@ contract Escrow {
         trx.buyer.transfer(trx.amount);
         emit FundsRefunded(_transactionId);
     }
+
+    // Simple on-chain points ledger for experimentation/tests
+    mapping(address => uint256) public points;
+
+    event PointsAwarded(address indexed to, uint256 amount);
+    event PointsTransferred(address indexed from, address indexed to, uint256 amount);
+
+    function awardPoints(address _to, uint256 _amount) public {
+        require(_amount > 0, "Amount must be greater than zero.");
+        points[_to] += _amount;
+        emit PointsAwarded(_to, _amount);
+    }
+
+    function transferPoints(address _to, uint256 _amount) public {
+        require(points[msg.sender] >= _amount, "Insufficient points.");
+        require(_amount > 0, "Amount must be greater than zero.");
+        points[msg.sender] -= _amount;
+        points[_to] += _amount;
+        emit PointsTransferred(msg.sender, _to, _amount);
+    }
 }
