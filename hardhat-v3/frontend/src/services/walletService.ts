@@ -12,15 +12,51 @@ export class WalletService {
     // Request account access
     await window.ethereum.request({ method: 'eth_requestAccounts' });
 
+    // Ensure we're on the correct network (Hardhat Local - Chain ID 31337)
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x7A69' }], // 31337 in hex
+      });
+    } catch (switchError: any) {
+      // If the network doesn't exist, add it
+      if (switchError.code === 4902) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: '0x7A69',
+            chainName: 'Hardhat Local',
+            rpcUrls: ['http://127.0.0.1:8545'],
+            nativeCurrency: {
+              name: 'ETH',
+              symbol: 'ETH',
+              decimals: 18
+            }
+          }]
+        });
+      } else {
+        throw switchError;
+      }
+    }
+
+    // Create fresh provider
     this.provider = new ethers.BrowserProvider(window.ethereum);
     this.signer = await this.provider.getSigner();
 
     const address = await this.signer.getAddress();
 
-    return { address, provider: this.provider };
-  }
+    // Check network
+    const network = await this.provider.getNetwork();
+    console.log(`Connected to network: ${network.name} (chainId: ${network.chainId})`);
+    console.log(`Connected address: ${address}`);
 
-  async switchAccount(): Promise<{ address: string; provider: ethers.BrowserProvider }> {
+    // Verify we're on the correct network
+    if (Number(network.chainId) !== 31337) {
+      throw new Error(`Wrong network! Expected chainId 31337, got ${network.chainId}`);
+    }
+
+    return { address, provider: this.provider };
+  }  async switchAccount(): Promise<{ address: string; provider: ethers.BrowserProvider }> {
     if (typeof window.ethereum === 'undefined') {
       throw new Error('MetaMask is not installed');
     }
@@ -62,11 +98,26 @@ export class WalletService {
     return await signer.getAddress();
   }
 
-  async getBalance(): Promise<string> {
-    const address = await this.getAddress();
-    const provider = await this.getProvider();
-    const balance = await provider.getBalance(address);
-    return ethers.formatEther(balance);
+  async getBalance(address?: string): Promise<string> {
+    try {
+      // Always use fresh provider to ensure we're using current MetaMask network
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('MetaMask is not installed');
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const targetAddress = address || await this.getAddress();
+
+      console.log(`Getting balance for ${targetAddress}...`);
+      const balance = await provider.getBalance(targetAddress);
+      const ethBalance = ethers.formatEther(balance);
+      console.log(`Balance result: ${ethBalance} ETH`);
+
+      return ethBalance;
+    } catch (error) {
+      console.error('Error getting balance:', error);
+      return '0.0';
+    }
   }
 }
 
