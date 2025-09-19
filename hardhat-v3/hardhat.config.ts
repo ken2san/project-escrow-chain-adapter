@@ -1,16 +1,14 @@
+console.log('[hardhat-config] loading hardhat-v3/hardhat.config.ts');
 import "@nomicfoundation/hardhat-ethers";
+console.log('[hardhat-config] imported @nomicfoundation/hardhat-ethers');
 import "@nomicfoundation/hardhat-mocha";
-import type { HardhatUserConfig } from "hardhat/config";
+console.log('[hardhat-config] imported @nomicfoundation/hardhat-mocha');
+import "@nomicfoundation/hardhat-ignition";
+console.log('[hardhat-config] imported @nomicfoundation/hardhat-ignition');
 
-const config: HardhatUserConfig = {
+export default {
   solidity: "0.8.28",
   mocha: {
-    timeout: 40000,
-    spec: "test/**/*.js"
-  },
-  paths: {
-    tests: "./test"
+    spec: "test/**/*.test.js"
   }
 };
-
-export default config;

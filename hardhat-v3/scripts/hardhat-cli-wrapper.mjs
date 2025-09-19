@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Lightweight wrapper to call Hardhat's internal CLI main without registering tsx.
 // This avoids TSX register hooks that can cause package export errors in some setups.
-const path = './node_modules/hardhat/dist/src/internal/cli/main.js';
+const path = '../node_modules/hardhat/dist/src/internal/cli/main.js';
 try {
   const mod = await import(path);
   if (mod && typeof mod.main === 'function') {
