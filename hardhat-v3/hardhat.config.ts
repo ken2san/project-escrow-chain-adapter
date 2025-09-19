@@ -9,6 +9,6 @@ console.log('[hardhat-config] imported @nomicfoundation/hardhat-ignition');
 export default {
   solidity: "0.8.28",
   mocha: {
-    spec: "test/**/*.test.js"
+    spec: "test/**/*.test.{js,mjs,cjs}"
   }
 };
