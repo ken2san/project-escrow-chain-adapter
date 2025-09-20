@@ -1,0 +1,12 @@
+{
+  "Escrow": {
+    "address": "0x9A676e781A523b5d0C0e43731313A708CB607508",
+    "network": "localhost",
+    "chainId": 31337,
+    "deployedAt": "2025-09-20T09:35:56.098Z"
+  },
+  "defaultAccounts": {
+    "user1": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "user2": "0xbD3e33013aA42e6835146f726aE5B0Ad745Cc453"
+  }
+}

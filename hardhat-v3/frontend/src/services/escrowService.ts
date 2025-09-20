@@ -111,9 +111,11 @@ export class EscrowService {
     const tx = await contract.transferPoints(toAddress, amount);
     return await tx.wait();
   }  async getTransaction(transactionId: number): Promise<Transaction> {
-    if (!this.contract) throw new Error('Contract not connected');
+    if (!this.contractAddress) throw new Error('Contract not connected');
 
-    const result = await this.contract.transactions(transactionId);
+    const signer = await walletService.getSigner();
+    const contract = new ethers.Contract(this.contractAddress, ESCROW_ABI, signer);
+    const result = await contract.transactions(transactionId);
     return {
       buyer: result.buyer,
       seller: result.seller,
@@ -123,7 +125,7 @@ export class EscrowService {
   }
 
   async getPoints(address: string): Promise<bigint> {
-    if (!this.contract) throw new Error('Contract not connected');
+    if (!this.contractAddress) throw new Error('Contract not connected');
 
     // Get fresh signer and recreate contract to ensure current connection
     const signer = await walletService.getSigner();
@@ -133,9 +135,11 @@ export class EscrowService {
   }
 
   async getNextTransactionId(): Promise<number> {
-    if (!this.contract) throw new Error('Contract not connected');
+    if (!this.contractAddress) throw new Error('Contract not connected');
 
-    const result = await this.contract.nextTransactionId();
+    const signer = await walletService.getSigner();
+    const contract = new ethers.Contract(this.contractAddress, ESCROW_ABI, signer);
+    const result = await contract.nextTransactionId();
     return Number(result);
   }
 }

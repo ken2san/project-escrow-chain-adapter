@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import { walletService } from './services/walletService';
 import { escrowService } from './services/escrowService';
@@ -50,6 +50,36 @@ function App() {
     };
     setLogs(prev => [newEntry, ...prev]);
   };
+
+  // コンポーネント起動時にデプロイ済みアドレスを自動読み込み
+  useEffect(() => {
+    const loadDeployedAddress = async () => {
+      try {
+        console.log('Loading deployed contract address...');
+        const response = await fetch('/deployed-contracts.json');
+        if (response.ok) {
+          const deployedContracts = await response.json();
+
+          // コントラクトアドレス設定
+          const escrowAddress = deployedContracts.Escrow?.address;
+          if (escrowAddress) {
+            setContractAddress(escrowAddress);
+            console.log(`✅ Auto-loaded contract address: ${escrowAddress}`);
+            addLog({
+              type: 'connection',
+              message: `Auto-loaded contract: ${escrowAddress.slice(0, 6)}...${escrowAddress.slice(-4)}`
+            });
+          }
+        } else {
+          console.log('No deployed-contracts.json found, manual input required');
+        }
+      } catch (error) {
+        console.log('Failed to load deployed address, manual input required:', error);
+      }
+    };
+
+    loadDeployedAddress();
+  }, []);
 
   const connectUserWallet = async (userNumber: 1 | 2) => {
     try {
@@ -229,7 +259,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>� Two-User Point Exchange DApp</h1>
+        <h1>🔄 Two-User Point Exchange DApp</h1>
 
         {/* Contract Connection */}
         <div style={{marginBottom: '30px', padding: '20px', border: '2px solid #444', borderRadius: '10px'}}>
