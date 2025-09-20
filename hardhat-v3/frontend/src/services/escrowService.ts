@@ -24,8 +24,6 @@ export class EscrowService {
   private contractAddress: string = '';
 
   async deployContract(): Promise<string> {
-    const signer = await walletService.getSigner();
-
     // Contract bytecode (you would get this from hardhat compilation)
     // For now, we'll assume the contract is already deployed
     // In a real app, you'd either deploy here or use a pre-deployed address
