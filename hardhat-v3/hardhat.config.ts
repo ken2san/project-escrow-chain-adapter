@@ -8,6 +8,11 @@ console.log('[hardhat-config] imported @nomicfoundation/hardhat-ignition');
 
 export default {
   solidity: "0.8.28",
+  networks: {
+    localhost: {
+      url: "http://127.0.0.1:8545"
+    }
+  },
   mocha: {
     spec: "test/**/*.test.{js,mjs,cjs}"
   }

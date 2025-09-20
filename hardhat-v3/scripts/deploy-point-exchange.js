@@ -3,39 +3,35 @@ import fs from 'fs';
 import path from 'path';
 
 async function main() {
-  console.log('Deploying Escrow contract...');
+  console.log('Deploying PointExchange contract...');
 
   const [deployer] = await hre.ethers.getSigners();
   console.log('Deploying contracts with the account:', deployer.address);
   console.log('Account balance:', hre.ethers.formatEther(await hre.ethers.provider.getBalance(deployer.address)));
 
-  const Escrow = await hre.ethers.getContractFactory('Escrow');
-  const escrow = await Escrow.deploy();
-  await escrow.waitForDeployment();
+  const PointExchange = await hre.ethers.getContractFactory('PointExchange');
+  const pointExchange = await PointExchange.deploy();
+  await pointExchange.waitForDeployment();
 
-  const contractAddress = await escrow.getAddress();
-  console.log('✅ Escrow contract deployed to:', contractAddress);
+  const contractAddress = await pointExchange.getAddress();
+  console.log('✅ PointExchange contract deployed to:', contractAddress);
 
   // Save contract address to JSON files
   const contractInfo = {
-    PointExchange: contractAddress,  // React側はPointExchangeとして認識
+    PointExchange: contractAddress,
     network: "localhost",
-    chainId: 31337,
     deployedAt: new Date().toISOString()
   };
 
-  // Save to frontend locations
+  // Save to frontend/public
   const publicPath = path.join(process.cwd(), 'frontend', 'public', 'deployed-contracts.json');
-  const srcPath = path.join(process.cwd(), 'frontend', 'src', 'deployed-contracts.json');
-
-  // Create directories if they don't exist
-  fs.mkdirSync(path.dirname(publicPath), { recursive: true });
-  fs.mkdirSync(path.dirname(srcPath), { recursive: true });
-
   fs.writeFileSync(publicPath, JSON.stringify(contractInfo, null, 2));
-  fs.writeFileSync(srcPath, JSON.stringify(contractInfo, null, 2));
+  console.log('✅ Contract address saved to frontend/public/deployed-contracts.json');
 
-  console.log('💾 Contract address saved to frontend files');
+  // Save to frontend/src
+  const srcPath = path.join(process.cwd(), 'frontend', 'src', 'deployed-contracts.json');
+  fs.writeFileSync(srcPath, JSON.stringify(contractInfo, null, 2));
+  console.log('✅ Contract address saved to frontend/src/deployed-contracts.json');
 
   console.log('\n📋 Contract Details:');
   console.log('Contract Address:', contractAddress);

@@ -14,11 +14,13 @@
     "@nomicfoundation/hardhat-verify": "^3.0.2",
     "@types/chai": "^5.2.2",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^24.3.1",
+    "@types/node": "^24.5.2",
     "chai": "^4.5.0",
     "ethers": "^6.15.0",
     "hardhat": "3.0.6",
-    "mocha": "^10.2.0"
+    "mocha": "^10.2.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
   },
   "scripts": {
     "test": "hardhat test"
