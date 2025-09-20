@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import './App.css';
 import { walletService } from './services/walletService';
 import { escrowService } from './services/escrowService';
+import { ethers } from 'ethers';
 
 interface User {
   address: string;
   balance: string;
   points: string;
   isConnected: boolean;
+  signer?: ethers.JsonRpcSigner; // 各ユーザー専用のサイナーを保存
 }
 
 interface LogEntry {
@@ -52,7 +54,8 @@ function App() {
   const connectUserWallet = async (userNumber: 1 | 2) => {
     try {
       console.log(`Connecting User ${userNumber}...`);
-      const { address } = await walletService.connectWallet();
+      const { address, provider } = await walletService.connectWallet();
+      const signer = await provider.getSigner();
       console.log(`Connected address: ${address}`);
 
       const balance = await walletService.getBalance(address);
@@ -62,7 +65,8 @@ function App() {
         address,
         balance,
         points: '0',
-        isConnected: true
+        isConnected: true,
+        signer // 各ユーザー専用のサイナーを保存
       };
 
       if (userNumber === 1) {
@@ -164,8 +168,15 @@ function App() {
       return;
     }
 
+    if (!fromUser.signer) {
+      addLog({ type: 'error', message: `User ${currentUser} signer not available` });
+      return;
+    }
+
     try {
-      await escrowService.transferPoints(toUser.address, parseInt(transferAmount));
+      // 現在のユーザーのサイナーを使用してポイント転送
+      console.log(`Transfer: User ${currentUser} (${fromUser.address}) -> User ${currentUser === 1 ? 2 : 1} (${toUser.address})`);
+      await escrowService.transferPointsWithSigner(fromUser.signer, toUser.address, parseInt(transferAmount));
 
       addLog({
         type: 'transfer',

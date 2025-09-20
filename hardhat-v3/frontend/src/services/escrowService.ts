@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { walletService } from './walletService';
-import { EscrowContract, Transaction } from '../types/contracts';
+import { Transaction } from '../types/contracts';
 
 // Escrow contract ABI (simplified for main functions)
 const ESCROW_ABI = [
@@ -64,18 +64,55 @@ export class EscrowService {
   async awardPoints(toAddress: string, amount: number): Promise<any> {
     if (!this.contract) throw new Error('Contract not connected');
 
-    const tx = await this.contract.awardPoints(toAddress, amount);
+    // Get fresh signer to ensure we're using the current MetaMask account
+    const signer = await walletService.getSigner();
+    const contract = new ethers.Contract(this.contractAddress, ESCROW_ABI, signer);
+
+    const tx = await contract.awardPoints(toAddress, amount);
+    return await tx.wait();
+  }
+
+  async transferPointsWithSigner(signer: ethers.JsonRpcSigner, toAddress: string, amount: number): Promise<any> {
+    if (!this.contractAddress) throw new Error('Contract not connected');
+
+    const fromAddress = await signer.getAddress();
+
+    // 指定されたサイナーでコントラクトを作成
+    const contract = new ethers.Contract(this.contractAddress, ESCROW_ABI, signer);
+
+    // Check sender's points balance
+    const currentPoints = await contract.points(fromAddress);
+    console.log(`Transfer attempt: ${fromAddress} has ${currentPoints} points, trying to transfer ${amount}`);
+
+    if (Number(currentPoints) < amount) {
+      throw new Error(`Insufficient points! You have ${currentPoints} points but trying to transfer ${amount}`);
+    }
+
+    const tx = await contract.transferPoints(toAddress, amount);
     return await tx.wait();
   }
 
   async transferPoints(toAddress: string, amount: number): Promise<any> {
     if (!this.contract) throw new Error('Contract not connected');
 
-    const tx = await this.contract.transferPoints(toAddress, amount);
-    return await tx.wait();
-  }
+    // Get fresh signer to ensure we're using the current MetaMask account
+    const signer = await walletService.getSigner();
+    const fromAddress = await signer.getAddress();
 
-  async getTransaction(transactionId: number): Promise<Transaction> {
+    // Recreate contract with current signer
+    const contract = new ethers.Contract(this.contractAddress, ESCROW_ABI, signer);
+
+    // Check sender's points balance
+    const currentPoints = await contract.points(fromAddress);
+    console.log(`Transfer attempt: ${fromAddress} has ${currentPoints} points, trying to transfer ${amount}`);
+
+    if (Number(currentPoints) < amount) {
+      throw new Error(`Insufficient points! You have ${currentPoints} points but trying to transfer ${amount}`);
+    }
+
+    const tx = await contract.transferPoints(toAddress, amount);
+    return await tx.wait();
+  }  async getTransaction(transactionId: number): Promise<Transaction> {
     if (!this.contract) throw new Error('Contract not connected');
 
     const result = await this.contract.transactions(transactionId);
@@ -90,7 +127,11 @@ export class EscrowService {
   async getPoints(address: string): Promise<bigint> {
     if (!this.contract) throw new Error('Contract not connected');
 
-    return await this.contract.points(address);
+    // Get fresh signer and recreate contract to ensure current connection
+    const signer = await walletService.getSigner();
+    const contract = new ethers.Contract(this.contractAddress, ESCROW_ABI, signer);
+
+    return await contract.points(address);
   }
 
   async getNextTransactionId(): Promise<number> {
