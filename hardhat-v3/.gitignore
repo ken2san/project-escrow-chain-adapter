@@ -4,3 +4,7 @@ cache/
 package-lock.json
 .env
 .DS_Store
+
+# Dev logs
+hardhat-network.log
+react-frontend.log
