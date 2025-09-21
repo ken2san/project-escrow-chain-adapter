@@ -1,20 +1,7 @@
 #!/bin/bash
 
 # Hardhat v3 Development Environment Startup Script
-# A# 2. Deploy contract automatically
-echo -e "\n${BLUE}🔧 Step 2: Deploying PointExchange contract...${NC}"
-echo -e "${YELLOW}🚀 Running automated deployment...${NC}"
-
-# Run the deployment script
-if ./scripts/fixed-deploy.sh; then
-    echo -e "${GREEN}✅ Contract deployment successful!${NC}"
-else
-    echo -e "${RED}❌ Contract deployment failed${NC}"
-    exit 1
-fi
-
-# Hardhat v3 Development Environment Startup Script
-# Auto-starts Hardhat network and React frontend with duplicate checking
+# Auto-starts Hardhat network, deploys real contract, and starts React frontend
 
 set -e  # Exit on any error
 
@@ -79,16 +66,39 @@ else
     done
 fi
 
-# 2. Setup contract configuration (skip deployment for now)
-echo -e "\n${BLUE}🔧 Step 2: Setting up contract configuration...${NC}"
-echo -e "${YELLOW}� Using existing contract configuration...${NC}"
+# 2. Deploy Real Escrow contract
+echo -e "\n${BLUE}🔧 Step 2: Deploying Real Escrow contract...${NC}"
+echo -e "${YELLOW}🚀 Running real contract deployment...${NC}"
 
-# Use the existing static configuration for now
-node scripts/save-deployed-address.mjs || {
-    echo -e "${YELLOW}⚠️  Using default contract configuration${NC}"
-}
+# Run the real deployment script
+if npx hardhat run scripts/real-deploy.mjs --network localhost; then
+    echo -e "${GREEN}✅ Real contract deployment successful!${NC}"
+else
+    echo -e "${RED}❌ Real contract deployment failed${NC}"
+    exit 1
+fi
 
-echo -e "${GREEN}✅ Contract configuration ready${NC}"
+# 2.1 Award initial points (retry loop)
+echo -e "\n${BLUE}🔧 Step 2.1: Awarding initial points to test accounts...${NC}"
+MAX_RETRIES=3
+attempt=1
+awarded=false
+while [ $attempt -le $MAX_RETRIES ]; do
+    echo -e "${YELLOW}🔁 Attempt $attempt to award points...${NC}"
+    if npx hardhat run scripts/award-points.mjs --network localhost; then
+        echo -e "${GREEN}✅ Initial points awarded successfully!${NC}"
+        awarded=true
+        break
+    else
+        echo -e "${RED}⚠️  Award attempt $attempt failed${NC}"
+        attempt=$((attempt+1))
+        sleep 1
+    fi
+done
+if [ "$awarded" != "true" ]; then
+    echo -e "${YELLOW}⚠️  Could not automatically award points after ${MAX_RETRIES} attempts.${NC}"
+    echo -e "${YELLOW}ℹ️  You can run manually: npx hardhat run scripts/award-points.mjs --network localhost${NC}"
+fi
 
 # 3. Check and start React Frontend (port 3000)
 echo -e "\n${BLUE}🔧 Step 3: Checking React Frontend (port 3000)...${NC}"
@@ -161,7 +171,6 @@ echo -e "\n${YELLOW}📝 Logs:${NC}"
 echo -e "   Hardhat: ./hardhat-network.log"
 echo -e "   React:   ./react-frontend.log"
 echo -e "\n${YELLOW}⏹️  To stop services:${NC}"
-echo -e "   pkill -f 'hardhat node'"
-echo -e "   pkill -f 'react-scripts start'"
+echo -e "   ./dev-stop.sh"
 
 echo -e "\n${GREEN}🚀 Happy coding!${NC}"

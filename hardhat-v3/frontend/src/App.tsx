@@ -61,7 +61,7 @@ function App() {
           const deployedContracts = await response.json();
 
           // コントラクトアドレス設定
-          const escrowAddress = deployedContracts.PointExchange || deployedContracts.Escrow?.address;
+          const escrowAddress = deployedContracts.Escrow?.address;
           if (escrowAddress) {
             setContractAddress(escrowAddress);
             console.log(`✅ Auto-loaded contract address: ${escrowAddress}`);
