@@ -23,6 +23,7 @@ interface LogEntry {
 
 function App() {
   const [contractAddress, setContractAddress] = useState<string>('');
+  const [overrideAddress, setOverrideAddress] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<1 | 2>(1);
 
   const [user1, setUser1] = useState<User>({
@@ -55,24 +56,45 @@ function App() {
   useEffect(() => {
     const loadDeployedAddress = async () => {
       try {
-        console.log('Loading deployed contract address...');
-        const response = await fetch('/deployed-contracts.json');
-        if (response.ok) {
-          const deployedContracts = await response.json();
+        console.log('Loading deployed contract address (public JSON preferred)...');
 
-          // コントラクトアドレス設定
-          const escrowAddress = deployedContracts.Escrow?.address;
-          if (escrowAddress) {
-            setContractAddress(escrowAddress);
-            console.log(`✅ Auto-loaded contract address: ${escrowAddress}`);
-            addLog({
-              type: 'connection',
-              message: `Auto-loaded contract: ${escrowAddress.slice(0, 6)}...${escrowAddress.slice(-4)}`
-            });
+        // Try public deployed-contracts.json first (authoritative for dev flow)
+        let publicAddress: string | undefined;
+        try {
+          const response = await fetch('/deployed-contracts.json');
+          if (response.ok) {
+            const deployedContracts = await response.json();
+            publicAddress = deployedContracts.Escrow?.address;
           }
-        } else {
-          console.log('No deployed-contracts.json found, manual input required');
+        } catch (e) {
+          console.warn('Could not fetch public deployed-contracts.json', e);
         }
+
+        // Check localStorage for any runtime override (set by browser deploy)
+        const stored = localStorage.getItem('deployedContractAddress');
+
+        if (publicAddress) {
+          setContractAddress(publicAddress);
+          console.log(`✅ Auto-loaded contract address from public JSON: ${publicAddress}`);
+          addLog({ type: 'connection', message: `Auto-loaded contract: ${publicAddress.slice(0, 6)}...${publicAddress.slice(-4)}` });
+
+          // If a stored override exists but differs from public, surface it but don't prefer it.
+          if (stored && stored !== publicAddress) {
+            setOverrideAddress(stored);
+            addLog({ type: 'connection', message: `Found local override (not applied): ${stored.slice(0,6)}...${stored.slice(-4)}` });
+          }
+          return;
+        }
+
+        // If no public JSON, fall back to stored override
+        if (stored) {
+          setContractAddress(stored);
+          addLog({ type: 'connection', message: `Loaded contract from localStorage (fallback): ${stored.slice(0,6)}...${stored.slice(-4)}` });
+          console.log(`✅ Loaded contract address from localStorage (fallback): ${stored}`);
+          return;
+        }
+
+        console.log('No deployed address found; please input or deploy in browser');
       } catch (error) {
         console.log('Failed to load deployed address, manual input required:', error);
       }
@@ -143,6 +165,37 @@ function App() {
       console.error('Failed to connect to contract:', error);
       addLog({ type: 'error', message: 'Failed to connect to contract' });
     }
+  };
+
+  const deployAndConnect = async () => {
+    try {
+      addLog({ type: 'connection', message: 'Deploying contract from browser...' });
+      const address = await escrowService.deployContract();
+      // Save to localStorage so subsequent reloads auto-connect
+      localStorage.setItem('deployedContractAddress', address);
+      setContractAddress(address);
+      addLog({ type: 'connection', message: `Deployed contract: ${address.slice(0,6)}...${address.slice(-4)}` });
+
+      // Auto-connect
+      await escrowService.connectToContract(address);
+      if (user1.isConnected) await updateUserPoints(1, user1.address);
+      if (user2.isConnected) await updateUserPoints(2, user2.address);
+    } catch (err) {
+      console.error('Deploy failed:', err);
+      addLog({ type: 'error', message: 'Deploy failed. See console.' });
+    }
+  };
+
+  const clearOverride = () => {
+    localStorage.removeItem('deployedContractAddress');
+    setOverrideAddress(null);
+    addLog({ type: 'connection', message: 'Cleared localStorage deployed contract override' });
+  };
+
+  const applyOverride = () => {
+    if (!overrideAddress) return;
+    setContractAddress(overrideAddress);
+    addLog({ type: 'connection', message: `Applied local override: ${overrideAddress.slice(0,6)}...${overrideAddress.slice(-4)}` });
   };
 
   const updateUserPoints = async (userNumber: 1 | 2, address: string) => {
@@ -272,6 +325,17 @@ function App() {
             style={{padding: '8px', width: '400px', marginRight: '10px'}}
           />
           <button onClick={connectContract}>Connect to Contract</button>
+          <button onClick={deployAndConnect} style={{marginLeft: '10px'}}>Deploy & Connect (Browser)</button>
+          {/* If we detected a stored override that's not applied, surface it here */}
+          {overrideAddress && (
+            <div style={{marginTop: '12px', padding: '10px', border: '1px dashed #666', borderRadius: '6px', backgroundColor: '#111'}}>
+              <div style={{marginBottom: '8px'}}>Local runtime override detected: <strong>{overrideAddress.slice(0,6)}...{overrideAddress.slice(-4)}</strong></div>
+              <div>
+                <button onClick={applyOverride}>Use Local Override</button>
+                <button onClick={clearOverride} style={{marginLeft: '10px'}}>Clear Local Override</button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Two User Panels */}

@@ -66,15 +66,19 @@ else
     done
 fi
 
-# 2. Deploy Real Escrow contract
-echo -e "\n${BLUE}🔧 Step 2: Deploying Real Escrow contract...${NC}"
-echo -e "${YELLOW}🚀 Running real contract deployment...${NC}"
+# 2. Deploy Escrow contract using canonical deploy script
+echo -e "\n${BLUE}🔧 Step 2: Deploying Escrow contract (canonical script)...${NC}"
+echo -e "${YELLOW}🚀 Running canonical deployment script (scripts/deploy.mjs)...${NC}"
 
-# Run the real deployment script
-if npx hardhat run scripts/real-deploy.mjs --network localhost; then
-    echo -e "${GREEN}✅ Real contract deployment successful!${NC}"
+# Prefer environment RPC_URL if provided; fall back to localhost
+DEPLOY_RPC=${RPC_URL:-http://127.0.0.1:8545}
+
+# Run the canonical deploy script (node ESM script)
+if RPC_URL="$DEPLOY_RPC" node scripts/deploy.mjs; then
+    echo -e "${GREEN}✅ Escrow deployment (deploy.mjs) successful!${NC}"
 else
-    echo -e "${RED}❌ Real contract deployment failed${NC}"
+    echo -e "${RED}❌ Escrow deployment (deploy.mjs) failed${NC}"
+    echo -e "${YELLOW}ℹ️  You can fall back to the legacy script: npx hardhat run scripts/real-deploy.mjs --network localhost${NC}"
     exit 1
 fi
 

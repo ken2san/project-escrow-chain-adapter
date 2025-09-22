@@ -58,22 +58,47 @@ async function main() {
   ];
 
   // Award points to each account
+  // Helper: sleep ms
+  const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+
   for (const account of testAccounts) {
-    try {
-      console.log(`\n🎯 Awarding ${account.points} points to ${account.name} (${account.address})...`);
+    console.log(`\n🎯 Awarding ${account.points} points to ${account.name} (${account.address})...`);
 
-      const tx = await escrow.awardPoints(account.address, account.points);
-      console.log('📝 Transaction hash:', tx.hash);
+    let attempts = 0;
+    const maxAttempts = 6;
+    while (attempts < maxAttempts) {
+      attempts += 1;
+      try {
+        // Use explicit nonce to avoid automine/race conditions
+        const nonce = await deployer.getNonce();
+        console.log(`Using nonce ${nonce} (attempt ${attempts})`);
 
-      const receipt = await tx.wait();
-      console.log('✅ Transaction confirmed in block:', receipt.blockNumber);
+        const tx = await escrow.awardPoints(account.address, account.points, { nonce });
+        console.log('📝 Transaction sent:', tx.hash);
 
-      // Verify points were awarded
-      const currentPoints = await escrow.points(account.address);
-      console.log('📊 Current points for', account.name + ':', currentPoints.toString());
+        const receipt = await tx.wait();
+        console.log('✅ Transaction confirmed in block:', receipt.blockNumber);
 
-    } catch (error) {
-      console.error(`❌ Failed to award points to ${account.name}:`, error.message);
+        // Verify points were awarded
+        const currentPoints = await escrow.points(account.address);
+        console.log('📊 Current points for', account.name + ':', currentPoints.toString());
+        break; // success
+      } catch (error) {
+        const msg = error && error.message ? error.message : String(error);
+        console.error(`Attempt ${attempts} failed:`, msg);
+
+        // If nonce-related, retry after small backoff
+        if (/nonce|replacement|already used|Transaction was replaced/i.test(msg) && attempts < maxAttempts) {
+          const backoff = 250 * attempts;
+          console.log(`Nonce conflict detected — retrying after ${backoff}ms`);
+          await sleep(backoff);
+          continue;
+        }
+
+        // For other errors, don't retry too many times
+        console.error(`❌ Failed to award points to ${account.name}:`, msg);
+        break;
+      }
     }
   }
 

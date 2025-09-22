@@ -1,72 +1,40 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.19;
 
 contract Escrow {
-    enum State { AwaitingPayment, AwaitingDelivery, Completed, Refunded }
-
-    struct Transaction {
-        address payable buyer;
-        address payable seller;
-        uint256 amount;
-        State state;
-    }
-
-    mapping(uint256 => Transaction) public transactions;
-    uint256 public nextTransactionId;
-
-    event TransactionCreated(uint256 transactionId, address buyer, address seller, uint256 amount);
-    event FundsReleased(uint256 transactionId);
-    event FundsRefunded(uint256 transactionId);
-
-    function createTransaction(address payable _seller) public payable {
-        require(msg.value > 0, "Amount must be greater than zero.");
-        transactions[nextTransactionId] = Transaction({
-            buyer: payable(msg.sender),
-            seller: _seller,
-            amount: msg.value,
-            state: State.AwaitingDelivery
-        });
-        emit TransactionCreated(nextTransactionId, msg.sender, _seller, msg.value);
-        nextTransactionId++;
-    }
-
-    function releaseFunds(uint256 _transactionId) public {
-        Transaction storage trx = transactions[_transactionId];
-        require(trx.seller == msg.sender, "Only seller can release funds.");
-        require(trx.state == State.AwaitingDelivery, "Transaction is not awaiting delivery.");
-
-        trx.state = State.Completed;
-        trx.seller.transfer(trx.amount);
-        emit FundsReleased(_transactionId);
-    }
-
-    function refundFunds(uint256 _transactionId) public {
-        Transaction storage trx = transactions[_transactionId];
-        require(trx.buyer == msg.sender, "Only buyer can request refund.");
-        require(trx.state == State.AwaitingDelivery, "Transaction is not awaiting delivery.");
-
-        trx.state = State.Refunded;
-        trx.buyer.transfer(trx.amount);
-        emit FundsRefunded(_transactionId);
-    }
-
-    // Simple on-chain points ledger for experimentation/tests
+    address public owner;
     mapping(address => uint256) public points;
 
     event PointsAwarded(address indexed to, uint256 amount);
     event PointsTransferred(address indexed from, address indexed to, uint256 amount);
 
-    function awardPoints(address _to, uint256 _amount) public {
-        require(_amount > 0, "Amount must be greater than zero.");
-        points[_to] += _amount;
-        emit PointsAwarded(_to, _amount);
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
     }
 
-    function transferPoints(address _to, uint256 _amount) public {
-        require(points[msg.sender] >= _amount, "Insufficient points.");
-        require(_amount > 0, "Amount must be greater than zero.");
-        points[msg.sender] -= _amount;
-        points[_to] += _amount;
-        emit PointsTransferred(msg.sender, _to, _amount);
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function awardPoints(address to, uint256 amount) external onlyOwner {
+        require(to != address(0), "Invalid address");
+        require(amount > 0, "Amount must be > 0");
+        points[to] += amount;
+        emit PointsAwarded(to, amount);
+    }
+
+    function pointsOf(address user) external view returns (uint256) {
+        return points[user];
+    }
+
+    function transferPoints(address to, uint256 amount) external {
+        require(to != address(0), "Invalid address");
+        uint256 bal = points[msg.sender];
+        require(bal >= amount, "Insufficient balance");
+        // checks-effects-interactions
+        points[msg.sender] = bal - amount;
+        points[to] += amount;
+        emit PointsTransferred(msg.sender, to, amount);
     }
 }

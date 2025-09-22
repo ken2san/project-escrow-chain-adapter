@@ -24,11 +24,30 @@ export class EscrowService {
   private contractAddress: string = '';
 
   async deployContract(): Promise<string> {
-    // Contract bytecode (you would get this from hardhat compilation)
-    // For now, we'll assume the contract is already deployed
-    // In a real app, you'd either deploy here or use a pre-deployed address
+    // Try to fetch artifact from public folder (built/copied by dev scripts)
+    try {
+      const resp = await fetch('/escrow-artifact.json');
+      if (!resp.ok) throw new Error('Artifact not available');
 
-    throw new Error('Contract deployment not implemented yet. Please provide deployed contract address.');
+      const artifact = await resp.json();
+
+      // Get signer from walletService (MetaMask or injected provider)
+      const signer = await walletService.getSigner();
+      if (!signer) throw new Error('No signer available for deployment');
+
+      // If signer is a provider's signer, use it to deploy
+  const factory: any = new ethers.ContractFactory(artifact.abi, artifact.bytecode, signer as any);
+  const contract: any = await factory.deploy();
+  await contract.deploymentTransaction();
+
+  // Return deployed address
+  this.contractAddress = contract.target || contract.address;
+  this.contract = contract.connect(signer as any);
+  return this.contractAddress;
+    } catch (err) {
+      console.error('Deploy failed:', err);
+      throw err;
+    }
   }
 
   async connectToContract(contractAddress: string): Promise<void> {
